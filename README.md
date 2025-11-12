@@ -6,16 +6,25 @@ JoshConverts is a simple web portal that lets you convert quantities into fun co
 
 ## Features
 - 🎙️ SYSK-themed design and branding
+- 🗣️ Natural language input - ask questions like you're talking to a friend!
+- 🎭 Fun, personality-driven responses inspired by Josh & Chuck
 - 📊 Convert between various items (vehicles, animals, food, landmarks)
 - 💡 Fun facts for different conversions
 - 📱 Responsive design works on any device
 - ⚡ Pure client-side - no server required!
+- 🔒 No external dependencies or API calls - 100% private and offline-capable
 
 ## How to Use
 1. Open `index.html` in any web browser
-2. Enter a quantity and item (e.g., "5 blue whales", "1000 elephants", "50 pickup trucks")
+2. Enter your question using natural language! Try any of these formats:
+   - "how many cats equal a blue whale?"
+   - "convert 5 elephants"
+   - "100 big macs to bowling balls"
+   - "what is 2000 apples?"
+   - Or the classic: "1000 elephants"
 3. Click "Convert It!" to see the conversions
 4. Learn something interesting from the fun facts!
+5. Enjoy the fun, off-the-cuff responses from Josh & Chuck!
 
 ## Supported Items
 - **Vehicles**: pickup trucks, cars, school buses
@@ -41,8 +50,15 @@ Then visit `http://localhost:8080` in your browser.
 ## Technical Details
 - Pure HTML, CSS, and JavaScript
 - No dependencies or build process
+- Custom lightweight natural language processing (NLP) parser
 - All conversion data stored in JavaScript objects
 - Client-side only - no backend required
+- Multiple input pattern recognition:
+  - Question format: "how many X equal Y?"
+  - Convert format: "convert X"
+  - Comparison format: "X to Y"
+  - Query format: "what is X?"
+  - Simple format: "number + item"
 
 ## Credits
 Inspired by the amazing podcast Stuff You Should Know by Josh Clark and Chuck Bryant! 
