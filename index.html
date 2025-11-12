@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JoshConverts - Stuff You Should Know</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎙️ JoshConverts</h1>
+            <p class="tagline">A Stuff You Should Know Production</p>
+            <p class="subtitle">Convert anything into everything with Josh & Chuck!</p>
+        </header>
+
+        <main>
+            <div class="converter-box">
+                <h2>What do you want to convert?</h2>
+                <p class="instructions">Enter a quantity and item (e.g., "20,000 pickup trucks" or "5 blue whales")</p>
+                
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="userInput" 
+                        placeholder="Try: 1000 elephants"
+                        autocomplete="off"
+                    >
+                    <button id="convertBtn">Convert It!</button>
+                </div>
+
+                <div id="results" class="results hidden">
+                    <h3>That's approximately...</h3>
+                    <div id="conversionList"></div>
+                </div>
+
+                <div id="error" class="error hidden"></div>
+            </div>
+
+            <div class="info-box">
+                <h3>💡 Did You Know?</h3>
+                <p id="funFact">Enter a conversion to learn something interesting!</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Brought to you by the good folks at Stuff You Should Know</p>
+            <p class="disclaimer">*All conversions are approximate and for entertainment purposes only</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
