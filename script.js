@@ -68,25 +68,143 @@ const defaultFacts = [
     "Honey never spoils - archaeologists have found 3,000-year-old honey that's still edible!",
 ];
 
-function parseInput(input) {
-    // Remove commas and normalize spacing
+// Fun response templates for Josh & Chuck personality
+const funResponses = {
+    greetings: [
+        "Well, well, well! Let's see what we've got here...",
+        "Alright Chuck, check this out!",
+        "Oh boy, this is a good one!",
+        "Fascinating question! Let me crunch these numbers...",
+        "You know what? I love this kind of stuff!",
+        "Hold on to your hats, folks!",
+        "This is the kind of question that keeps me up at night!",
+    ],
+    large: [
+        "Holy smokes, that's MASSIVE!",
+        "Whoa! That's a LOT!",
+        "Now we're talking BIG numbers!",
+        "That's impressively huge!",
+    ],
+    small: [
+        "Okay, so we're going small scale here!",
+        "Alright, let's think tiny for a second...",
+        "Breaking it down to the little guys!",
+    ],
+    equal: [
+        "Here's the scoop:",
+        "Check this out:",
+        "Get ready for this:",
+        "Drumroll please...",
+    ]
+};
+
+function getRandomResponse(category) {
+    const responses = funResponses[category];
+    return responses[Math.floor(Math.random() * responses.length)];
+}
+
+// Enhanced natural language parsing - custom lightweight implementation
+function parseInputNLP(input) {
+    // Remove commas and normalize
     input = input.trim().replace(/,/g, '');
+    const lowerInput = input.toLowerCase();
     
-    // Try to match pattern: number + item
-    const match = input.match(/^([\d.]+)\s+(.+)$/i);
+    // Extract all numbers from the input
+    const numberMatches = input.match(/[\d.]+/g);
+    const numbers = numberMatches ? numberMatches.map(n => parseFloat(n)) : [];
     
-    if (!match) {
-        return null;
+    // Pattern 1: "how many X equal(s) Y?" or "X equals Y"
+    const equalMatch = lowerInput.match(/how\s+many\s+(.+?)\s+(?:equal|equals?|are\s+in|is\s+in|in)\s+(?:a\s+|an\s+)?(.+?)(?:\?|$)/i);
+    if (equalMatch) {
+        const targetItem = equalMatch[1].trim();
+        const sourceInput = equalMatch[2].trim();
+        
+        // Try to extract quantity from source
+        const sourceMatch = sourceInput.match(/^([\d.]+)\s+(.+)$/);
+        if (sourceMatch) {
+            return {
+                quantity: parseFloat(sourceMatch[1]),
+                item: sourceMatch[2].toLowerCase(),
+                targetItem: targetItem.toLowerCase(),
+                mode: 'reverse'
+            };
+        } else {
+            // Assume quantity is 1
+            return {
+                quantity: 1,
+                item: sourceInput.toLowerCase(),
+                targetItem: targetItem.toLowerCase(),
+                mode: 'reverse'
+            };
+        }
     }
     
-    const quantity = parseFloat(match[1]);
-    const item = match[2].toLowerCase().trim();
-    
-    if (isNaN(quantity) || quantity <= 0) {
-        return null;
+    // Pattern 2: "convert X" or "what is X"
+    const convertMatch = lowerInput.match(/(?:convert|what\s+is|what's|whats)\s+(.+?)(?:\?|$)/i);
+    if (convertMatch) {
+        const itemInput = convertMatch[1].trim();
+        const match = itemInput.match(/^([\d.]+)\s+(.+)$/);
+        if (match) {
+            return {
+                quantity: parseFloat(match[1]),
+                item: match[2].toLowerCase(),
+                mode: 'normal'
+            };
+        }
     }
     
-    return { quantity, item };
+    // Pattern 3: "X to Y" or "X into Y"
+    const toMatch = lowerInput.match(/(.+?)\s+(?:to|into)\s+(.+?)(?:\?|$)/i);
+    if (toMatch) {
+        const sourceInput = toMatch[1].trim();
+        const targetItem = toMatch[2].trim();
+        
+        const sourceMatch = sourceInput.match(/^([\d.]+)\s+(.+)$/);
+        if (sourceMatch) {
+            return {
+                quantity: parseFloat(sourceMatch[1]),
+                item: sourceMatch[2].toLowerCase(),
+                targetItem: targetItem.toLowerCase(),
+                mode: 'specific'
+            };
+        }
+    }
+    
+    // Pattern 4: Simple "number + item" (fallback to original behavior)
+    const simpleMatch = input.match(/^([\d.]+)\s+(.+)$/i);
+    if (simpleMatch) {
+        const quantity = parseFloat(simpleMatch[1]);
+        const item = simpleMatch[2].toLowerCase().trim();
+        
+        if (!isNaN(quantity) && quantity > 0) {
+            return { quantity, item, mode: 'normal' };
+        }
+    }
+    
+    // Pattern 5: Just an item name (assume quantity of 1)
+    const potentialItem = lowerInput.replace(/\?/g, '').trim();
+    if (referenceData[potentialItem]) {
+        return { quantity: 1, item: potentialItem, mode: 'normal' };
+    }
+    
+    // Pattern 6: Try to find any known item in the input
+    for (const knownItem in referenceData) {
+        if (lowerInput.includes(knownItem)) {
+            // Found an item, try to extract quantity
+            if (numbers.length > 0) {
+                return { quantity: numbers[0], item: knownItem, mode: 'normal' };
+            } else {
+                return { quantity: 1, item: knownItem, mode: 'normal' };
+            }
+        }
+    }
+    
+    return null;
+}
+
+// Legacy function for backwards compatibility
+function parseInput(input) {
+    return parseInputNLP(input);
 }
 
 function formatNumber(num) {
@@ -103,7 +221,7 @@ function formatNumber(num) {
     }
 }
 
-function calculateConversions(quantity, item) {
+function calculateConversions(quantity, item, mode = 'normal', targetItem = null) {
     const inputData = referenceData[item];
     
     if (!inputData) {
@@ -113,6 +231,33 @@ function calculateConversions(quantity, item) {
     const totalWeight = quantity * inputData.weight;
     const conversions = [];
     
+    // Mode: specific - user wants to convert to a specific item
+    if (mode === 'specific' && targetItem && referenceData[targetItem]) {
+        const targetData = referenceData[targetItem];
+        const convertedQty = totalWeight / targetData.weight;
+        
+        return [{
+            quantity: formatNumber(convertedQty),
+            label: targetData.plural,
+            rawQty: convertedQty,
+            mode: 'specific'
+        }];
+    }
+    
+    // Mode: reverse - user wants to know how many X equal Y
+    if (mode === 'reverse' && targetItem && referenceData[targetItem]) {
+        const targetData = referenceData[targetItem];
+        const convertedQty = totalWeight / targetData.weight;
+        
+        return [{
+            quantity: formatNumber(convertedQty),
+            label: targetData.plural,
+            rawQty: convertedQty,
+            mode: 'reverse'
+        }];
+    }
+    
+    // Mode: normal - show multiple conversions
     // Select interesting comparison items
     const comparisonItems = [
         'big mac',
@@ -160,7 +305,7 @@ function calculateConversions(quantity, item) {
     return conversions.slice(0, 8);
 }
 
-function displayResults(conversions) {
+function displayResults(conversions, inputData = {}) {
     const resultDiv = document.getElementById('results');
     const conversionList = document.getElementById('conversionList');
     const errorDiv = document.getElementById('error');
@@ -170,11 +315,41 @@ function displayResults(conversions) {
     errorDiv.classList.add('hidden');
     
     if (!conversions || conversions.length === 0) {
-        errorDiv.textContent = 'Sorry, we don\'t have conversion data for that item yet! Try something like "1000 elephants" or "50 pickup trucks".';
+        errorDiv.innerHTML = `<strong>Hmm, that's a head-scratcher!</strong><br>We don't have data for that item yet. Try something like "how many cats equal a blue whale?" or "convert 50 pickup trucks"!`;
         errorDiv.classList.remove('hidden');
         resultDiv.classList.add('hidden');
         return;
     }
+    
+    // Add fun greeting based on conversion size
+    const greeting = document.createElement('p');
+    greeting.className = 'fun-greeting';
+    greeting.style.cssText = 'color: #764ba2; font-style: italic; margin-bottom: 15px; font-size: 1.1em;';
+    
+    const maxQty = Math.max(...conversions.map(c => c.rawQty || 0));
+    if (maxQty > 1000000) {
+        greeting.textContent = getRandomResponse('large');
+    } else if (maxQty < 1) {
+        greeting.textContent = getRandomResponse('small');
+    } else {
+        greeting.textContent = getRandomResponse('greetings');
+    }
+    
+    conversionList.appendChild(greeting);
+    
+    // Add result header
+    const header = document.createElement('p');
+    header.style.cssText = 'font-weight: bold; margin-bottom: 10px; color: #667eea;';
+    
+    if (inputData.mode === 'reverse') {
+        header.textContent = `${getRandomResponse('equal')} That equals about...`;
+    } else if (inputData.mode === 'specific') {
+        header.textContent = `${getRandomResponse('equal')} That's approximately...`;
+    } else {
+        header.textContent = `${getRandomResponse('equal')} That's roughly...`;
+    }
+    
+    conversionList.appendChild(header);
     
     conversions.forEach(conv => {
         const item = document.createElement('div');
@@ -203,18 +378,28 @@ function updateFunFact(item) {
 
 function handleConversion() {
     const input = document.getElementById('userInput').value;
-    const parsed = parseInput(input);
+    const parsed = parseInputNLP(input);
     
     if (!parsed) {
         const errorDiv = document.getElementById('error');
-        errorDiv.textContent = 'Please enter a valid quantity and item (e.g., "100 apples" or "5 elephants")';
+        errorDiv.innerHTML = `<strong>Oops!</strong> I didn't quite catch that. Try asking something like:<br>
+            • "How many cats equal a blue whale?"<br>
+            • "Convert 100 apples"<br>
+            • "5 elephants to cars"<br>
+            • "1000 big macs"`;
         errorDiv.classList.remove('hidden');
         document.getElementById('results').classList.add('hidden');
         return;
     }
     
-    const conversions = calculateConversions(parsed.quantity, parsed.item);
-    displayResults(conversions);
+    const conversions = calculateConversions(
+        parsed.quantity, 
+        parsed.item, 
+        parsed.mode || 'normal', 
+        parsed.targetItem
+    );
+    
+    displayResults(conversions, parsed);
     updateFunFact(parsed.item);
 }
 
